@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <!-- api doc is at https://github.com/npm/download-counts -->
+  <meta charset="utf-8">
+  <title>NPM Statistics</title>
+  <link rel="stylesheet" href="http://kendo.cdn.telerik.com/2019.2.514/styles/kendo.common-material.min.css">
+  <link rel="stylesheet" href="http://kendo.cdn.telerik.com/2019.2.514/styles/kendo.material.min.css" />
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <script src="http://kendo.cdn.telerik.com/2019.2.514/js/kendo.all.min.js"></script>
+
+  <style>
+    h1 {
+      text-align: center;
+      margin-top: 25px;
+      margin-bottom: 50px;
+    }
+
+    .dateLabel {
+      display: inline-block;
+      width: 100px;
+    }
+  </style>
+
+  <script>
+    var dcnt = 0;
+    var adat = [];
+    var adatn = [];
+    var vdat = [];
+    var vdatn = [];
+    var rdat = [];
+    var rdatn = [];
+    var tdat = [];
+    var dates = [];
+    var wdates = [];
+    var amax = 0;
+    var vmax = 0;
+    var rmax = 0;
+    var maxmax = 0;
+    var len = 0;
+    var wofw = 0;
+    var showscale = true;
+    var atotal = 0;
+    var rtotal = 0;
+    var vtotal = 0;
+
+    $(document).ready(function() {
+
+      var d = new Date();
+
+      yr = d.getFullYear();
+      mo = d.getMonth() + 1;
+      da = d.getDate();
+      today = mo + "/" + da + "/" + yr;
+
+      $("#getCount").kendoButton();
+      $("#normalize").kendoButton();
+      $("#datepicker1").kendoDatePicker({
+        value: "1/1/2019"
+      });
+      $("#datepicker2").kendoDatePicker({
+        value: today
+      });
+      getCount();
+    });
+
+    function getCount() {
+
+      adat = [];
+      adatn = [];
+      vdat = [];
+      vdatn = [];
+      rdat = [];
+      rdatn = [];
+      dcnt = 0;
+      dates = [];
+      dcnt = 0;
+      tdat = [];
+      dates = [];
+      wdates = [];
+      amax = 0;
+      vmax = 0;
+      rmax = 0;
+      maxmax = 0;
+      len = 0;
+      wofw = 0;
+      showscale = true;
+      vtotal = 0;
+      rtotal = 0;
+      atotal = 0;
+
+      var datepicker = $("#datepicker1").data("kendoDatePicker");
+      dstr = datepicker.value();
+      yr = dstr.getFullYear();
+      mo = dstr.getMonth() + 1;
+      date = dstr.getDate();
+      dofw = dstr.getDay();
+      start = yr + "-" + mo + "-" + date;
+
+      var datepicker = $("#datepicker2").data("kendoDatePicker");
+      dstr = datepicker.value();
+      yr = dstr.getFullYear();
+      mo = dstr.getMonth() + 1;
+      date = dstr.getDate();
+      end = yr + "-" + mo + "-" + date;
+
+      getData(start, end, "@progress/kendo-angular-grid");
+      getData(start, end, "@progress/kendo-vue-grid");
+      getData(start, end, "@progress/kendo-react-grid");
+
+    }
+
+    function getData(start, end, spack) {
+
+      nstr = "https://api.npmjs.org/downloads/range/" + start + ":" + end + "/" + spack;
+
+      var request = new XMLHttpRequest();
+
+      request.open("GET", nstr);
+
+      request.onreadystatechange = function() {
+        if (this.readyState == 4) {
+          if (this.status == 200) {
+            if (this.responseText != null) {
+              unpack(this.responseText);
+            } else
+              alert("Ajax error: no data was received");
+          } else
+            alert("Ajax error: state = " + this.readyState + ", status = " + this.status +
+              ", stateText = " + this.statusText + ", response Text  = " + this.responseText +
+              ", response URL = " + this.responseURL);
+        }
+      }
+
+      request.send(nstr);
+    }
+
+    function unpack(retdat) {
+      var i = 0;
+      var f = "";
+      robj = JSON.parse(retdat);
+      len = robj.downloads.length;
+      pack = robj.package;
+      ++dcnt;
+      switch (pack) {
+        case "@progress/kendo-angular-grid":
+          f = "a";
+          amax = 0;
+          break;
+        case "@progress/kendo-vue-grid":
+          f = "v";
+          vmax = 0;
+          break;
+        case "@progress/kendo-react-grid":
+          f = "r";
+          rmax = 0;
+          break;
+        default:
+          break;
+      }
+      for (i = 0; i < len; ++i) {
+        if (dcnt < 2) {
+          dates.push(robj.downloads[i].day);
+        }
+        dl = robj.downloads[i].downloads;
+        switch (f) {
+          case "a":
+            adat.push(dl);
+            atotal += dl;
+            if (dl > amax) {
+              amax = dl;
+            };
+            break;
+          case "v":
+            vdat.push(dl);
+            vtotal += dl;
+            if (dl > vmax) {
+              vmax = dl;
+            };
+            break;
+          case "r":
+            rdat.push(dl);
+            rtotal += dl;
+            if (dl > rmax) {
+              rmax = dl;
+            };
+            break;
+          default:
+            break;
+        }
+
+      }
+
+      if (dcnt > 2) {
+
+        // o.k. we have data for all three packages
+
+        var dowcnt = 0;
+        var wcnt = 0;
+        var fwstart = 0;
+        var cdate = dates[0];
+
+        // get totals values for each weekly
+
+        if (dofw == 0) {
+          fwstart = 0
+        } else {
+          fwstart = 6 - dofw
+        };
+
+        for (i = fwstart; i < len; i++) {
+          if (dowcnt == 0) {
+            cdate = dates[i]
+          };
+          if (++dowcnt > 6) {
+            tdat.push(wcnt);
+            wdates.push(cdate);
+            wcnt = 0;
+            dowcnt = 0;
+          } else {
+            wcnt += rdat[i] + adat[i] + vdat[i];
+          };
+        };
+
+        // create normalized value arrays
+
+        var rmult = amax / rmax;
+        var vmult = amax / vmax;
+        for (i = 0; i < len; i++) {
+          adatn.push(adat[i]);
+        };
+        for (i = 0; i < len; i++) {
+          rdatn.push(rdat[i] * rmult);
+        };
+        for (i = 0; i < len; i++) {
+          vdatn.push(vdat[i] * vmult);
+        };
+
+        drawChart1(showscale, adat, vdat, rdat);
+        drawTotals();
+        drawPie();
+        drawGrid();
+      }
+    };
+
+    function drawGrid() {
+      $("#grid").kendoGrid({
+        dataSource: {
+          data: [{
+            "Framework": "Angular",
+            "Max": amax
+          }, {
+            "Framework": "React",
+            "Max": rmax
+          }, {
+            "Framework": "Vue",
+            "Max": vmax
+          }]
+        },
+        sortable: true,
+        scrollable: false,
+        columns: [{
+          field: "Framework",
+          title: "Framework"
+        }, {
+          field: "Max",
+          title: "Max Daily"
+        }]
+      });
+    }
+
+    function drawPie() {
+      $("#pie").kendoChart({
+        title: {
+          position: "top",
+          text: "% of Total Downloads"
+        },
+        legend: {
+          visible: true
+        },
+        chartArea: {
+          background: ""
+        },
+        seriesDefaults: {
+          labels: {
+            visible: false,
+          }
+        },
+        series: [{
+          type: "pie",
+          startAngle: 90,
+          data: [{
+            category: "Angular",
+            value: atotal,
+          }, {
+            category: "React",
+            value: rtotal,
+          }, {
+            category: "Vue",
+            value: vtotal,
+          }]
+        }],
+        tooltip: {
+          visible: true,
+          format: "{0}"
+        }
+      });
+
+      //    $(document).bind("kendo:skinChange", createChart);
+
+    }
+
+    function drawChart1(scale, adat, vdat, rdat) {
+      // update kendoChart
+
+      $("#chart1").kendoChart({
+        title: {
+          text: "Daily Grid Downloads"
+        },
+        legend: {
+          position: "bottom"
+        },
+        seriesDefaults: {
+          type: "line",
+          markers: {
+            visible: false
+          }
+        },
+        series: [{
+          name: "Angular",
+          data: adat,
+
+        }, {
+          name: "Vue",
+          data: vdat
+        }, {
+          name: "React",
+          data: rdat
+        }],
+        valueAxis: {
+          labels: {
+            format: "{0}"
+          },
+          visible: showscale,
+        },
+        categoryAxis: {
+          categories: dates,
+          visible: false
+        },
+        tooltip: {
+          visible: true,
+          template: "${category}<br/>${series.name} ${value}"
+        }
+      });
+
+    }
+
+    function normalizeData() {
+      var fu = $("#nbtn").text();
+      if ($("#nbtn").text() == "Normalize") {
+        $("#nbtn").text("Restore");
+        showscale = false;
+        drawChart1(showscale, adatn, vdatn, rdatn);
+      } else {
+        $("#nbtn").text("Normalize");
+        showscale = true;
+        drawChart1(showscale, adat, vdat, rdat);
+      }
+    }
+
+    function drawTotals() {
+
+      $("#chart2").kendoChart({
+        title: {
+          text: "Weekly Grid Total Downloads (Sa-Fr)"
+        },
+        legend: {
+          position: "bottom"
+        },
+        seriesDefaults: {
+          type: "column",
+          markers: {
+            visible: false
+          }
+        },
+        series: [{
+          data: tdat
+        }],
+        valueAxis: {
+          labels: {
+            format: "{0}"
+          },
+          visible: showscale,
+        },
+        categoryAxis: {
+          categories: wdates,
+          visible: false
+        },
+        tooltip: {
+          visible: true,
+          template: "${category}<br/>Total ${value}"
+        }
+      });
+    }
+  </script>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="row">
+      <div class="col-lg-12">
+        <h1>NPM Downloads for Kendo UI Grids</h1>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-4">
+        <span class="dateLabel">Start date:</span>
+        <input id="datepicker1" value="1/2/2019" title="datepicker" /><br />
+        <span class="dateLabel">End date:</span>
+        <input id="datepicker2" title="datepicker" /><br /><br />
+
+        <button id="getCount" onClick="getCount()" class="k-primary">Update</button><br /><br />
+        <button id="normalize" onClick="normalizeData()" class="k-primary"><span id="nbtn">Normalize</span></button>
+        <br /><br />
+      </div>
+
+      <div class="col-lg-4">
+        <div id="grid"></div>
+      </div>
+      <div class="col-lg-4">
+        <div class="demo-section k-content wide">
+          <div id="pie"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-12">
+
+        <div id="chart1"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-12">
+
+        <div id="chart2"></div>
+      </div>
+    </div>
+  </div>
+
+
+</body>
+
+</html>
