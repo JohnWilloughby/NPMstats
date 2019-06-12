@@ -28,27 +28,27 @@
 
   <script>
     var dcnt = 0;
-    var adat = [];
-    var adatn = [];
-    var vdat = [];
-    var vdatn = [];
-    var rdat = [];
-    var rdatn = [];
-    var tdat = [];
-    var dates = [];
-    var wdates = [];
-    var amax = 0;
-    var vmax = 0;
-    var rmax = 0;
+    var packageData = [];
+    packageData[0] = [];
+    packageData[1] = [];
+    packageData[2] = [];
+    var packageDataNormalized0 = [];
+    var packageDataNormalized1 = [];
+    var packageDataNormalized2 = [];
+    var packageDataWeeklyTotals = [];
+    var dailyDates = [];
+    var weeklyDates = [];
+    var packageMax = [0, 0, 0];
     var maxmax = 0;
     var len = 0;
     var wofw = 0;
     var showscale = true;
-    var atotal = 0;
-    var rtotal = 0;
-    var vtotal = 0;
+    var packageTotal = [0, 0, 0];
+    var packageName = [];
 
     $(document).ready(function() {
+
+      // first get the current date as the end date, then set the start date for three months category
 
       var d = new Date();
 
@@ -57,41 +57,59 @@
       da = d.getDate();
       today = mo + "/" + da + "/" + yr;
 
+      // and let's find three months ago for the start date
+      smo = mo - 3;
+      syr = yr;
+      if (smo < 1) {
+        smo += 12;
+        --syr;
+      };
+      sdate = smo + "/" + da + "/" + syr;
+
+      // initialize the buttons
       $("#getCount").kendoButton();
       $("#normalize").kendoButton();
+
+      // initialize the date pickers
       $("#datepicker1").kendoDatePicker({
-        value: "1/1/2019"
+        value: sdate
       });
       $("#datepicker2").kendoDatePicker({
         value: today
       });
+
+      // now go get the data for this period
+      // we don't need to initialize the grid or charts because we draw them after we have data
+
       getCount();
+
     });
 
     function getCount() {
 
-      adat = [];
-      adatn = [];
-      vdat = [];
-      vdatn = [];
-      rdat = [];
-      rdatn = [];
+      // first initialize all the variables
+
+      packageData[0] = [];
+      packageDataNormalized0 = [];
+      packageData[1] = [];
+      packageDataNormalized1 = [];
+      packageData[2] = [];
+      packageDataNormalized2 = [];
       dcnt = 0;
-      dates = [];
+      dailyDates = [];
       dcnt = 0;
-      tdat = [];
-      dates = [];
-      wdates = [];
-      amax = 0;
-      vmax = 0;
-      rmax = 0;
+      packageDataWeeklyTotals = [];
+      dailyDates = [];
+      weeklyDates = [];
+      packageMax = [0, 0, 0];
       maxmax = 0;
       len = 0;
       wofw = 0;
       showscale = true;
-      vtotal = 0;
-      rtotal = 0;
-      atotal = 0;
+      packageTotal = [0, 0, 0];
+      packageMax = [0, 0, 0];
+
+      // first get the two dates
 
       var datepicker = $("#datepicker1").data("kendoDatePicker");
       dstr = datepicker.value();
@@ -108,13 +126,18 @@
       date = dstr.getDate();
       end = yr + "-" + mo + "-" + date;
 
-      getData(start, end, "@progress/kendo-angular-grid");
-      getData(start, end, "@progress/kendo-vue-grid");
-      getData(start, end, "@progress/kendo-react-grid");
+      packageName[0] = $("#package1").val();
+            packageName[1] = $("#package2").val();
+                  packageName[2] = $("#package3").val();
+      // now go get the data for each package
+
+      getPackageData(start, end, packageName[0]);
+      getPackageData(start, end, packageName[1]);
+      getPackageData(start, end, packageName[2]);
 
     }
 
-    function getData(start, end, spack) {
+    function getPackageData(start, end, spack) {
 
       nstr = "https://api.npmjs.org/downloads/range/" + start + ":" + end + "/" + spack;
 
@@ -139,59 +162,41 @@
       request.send(nstr);
     }
 
-    function unpack(retdat) {
+    function unpack(returnedData) {
       var i = 0;
-      var f = "";
-      robj = JSON.parse(retdat);
+      var f = 0;
+      robj = JSON.parse(returnedData);
       len = robj.downloads.length;
       pack = robj.package;
       ++dcnt;
+
+      // which package are we processing data for?
       switch (pack) {
-        case "@progress/kendo-angular-grid":
-          f = "a";
-          amax = 0;
+        case packageName[0]:
+          f = 0;
           break;
-        case "@progress/kendo-vue-grid":
-          f = "v";
-          vmax = 0;
+        case packageName[1]:
+          f = 1;
           break;
-        case "@progress/kendo-react-grid":
-          f = "r";
-          rmax = 0;
+        case packageName[2]:
+          f = 2;
           break;
         default:
           break;
       }
+
+      //
       for (i = 0; i < len; ++i) {
         if (dcnt < 2) {
-          dates.push(robj.downloads[i].day);
+          // dates are the same for all packages, just store them if this is the first package we are reading
+          dailyDates.push(robj.downloads[i].day);
         }
         dl = robj.downloads[i].downloads;
-        switch (f) {
-          case "a":
-            adat.push(dl);
-            atotal += dl;
-            if (dl > amax) {
-              amax = dl;
-            };
-            break;
-          case "v":
-            vdat.push(dl);
-            vtotal += dl;
-            if (dl > vmax) {
-              vmax = dl;
-            };
-            break;
-          case "r":
-            rdat.push(dl);
-            rtotal += dl;
-            if (dl > rmax) {
-              rmax = dl;
-            };
-            break;
-          default:
-            break;
-        }
+        packageTotal[f] += dl;
+        if (dl > packageMax[f]) {
+          packageMax[f] = dl;
+        };
+                    packageData[f].push(dl);
 
       }
 
@@ -202,7 +207,7 @@
         var dowcnt = 0;
         var wcnt = 0;
         var fwstart = 0;
-        var cdate = dates[0];
+        var cdate = dailyDates[0];
 
         // get totals values for each weekly
 
@@ -214,33 +219,34 @@
 
         for (i = fwstart; i < len; i++) {
           if (dowcnt == 0) {
-            cdate = dates[i]
+            cdate = dailyDates[i]
           };
           if (++dowcnt > 6) {
-            tdat.push(wcnt);
-            wdates.push(cdate);
+            packageDataWeeklyTotals.push(wcnt);
+            weeklyDates.push(cdate);
             wcnt = 0;
             dowcnt = 0;
           } else {
-            wcnt += rdat[i] + adat[i] + vdat[i];
+            wcnt += packageData[0][i] + packageData[1][i] + packageData[2][i];
           };
         };
 
         // create normalized value arrays
 
-        var rmult = amax / rmax;
-        var vmult = amax / vmax;
+        var rmult = packageMax[0] / packageMax[2];
+        var vmult = packageMax[0] / packageMax[1];
         for (i = 0; i < len; i++) {
-          adatn.push(adat[i]);
+          packageDataNormalized0.push(packageData[0][i]);
         };
         for (i = 0; i < len; i++) {
-          rdatn.push(rdat[i] * rmult);
+          packageDataNormalized2.push(packageData[2][i] * rmult);
         };
         for (i = 0; i < len; i++) {
-          vdatn.push(vdat[i] * vmult);
+          packageDataNormalized1.push(packageData[1][i] * vmult);
         };
 
-        drawChart1(showscale, adat, vdat, rdat);
+        // now draw all the charts and the grid
+        drawChart1(showscale, packageData[0], packageData[1], packageData[2]);
         drawTotals();
         drawPie();
         drawGrid();
@@ -251,21 +257,21 @@
       $("#grid").kendoGrid({
         dataSource: {
           data: [{
-            "Framework": "Angular",
-            "Max": amax
+            "Package": packageName[0],
+            "Max": packageMax[0]
           }, {
-            "Framework": "React",
-            "Max": rmax
+            "Package": packageName[1],
+            "Max": packageMax[2]
           }, {
-            "Framework": "Vue",
-            "Max": vmax
+            "Package": packageName[2],
+            "Max": packageMax[1]
           }]
         },
         sortable: true,
         scrollable: false,
         columns: [{
-          field: "Framework",
-          title: "Framework"
+          field: "Package",
+          title: "Package"
         }, {
           field: "Max",
           title: "Max Daily"
@@ -275,6 +281,7 @@
 
     function drawPie() {
       $("#pie").kendoChart({
+        theme: "bootstrap",
         title: {
           position: "top",
           text: "% of Total Downloads"
@@ -294,14 +301,14 @@
           type: "pie",
           startAngle: 90,
           data: [{
-            category: "Angular",
-            value: atotal,
+            category: packageName[0],
+            value: packageTotal[0],
           }, {
-            category: "React",
-            value: rtotal,
+            category: packageName[1],
+            value: packageTotal[1],
           }, {
-            category: "Vue",
-            value: vtotal,
+            category: packageName[2],
+            value: packageTotal[2],
           }]
         }],
         tooltip: {
@@ -310,16 +317,15 @@
         }
       });
 
-      //    $(document).bind("kendo:skinChange", createChart);
-
     }
 
-    function drawChart1(scale, adat, vdat, rdat) {
+    function drawChart1(scale, data0, data1, data2) {
       // update kendoChart
 
       $("#chart1").kendoChart({
+        theme: "bootstrap",
         title: {
-          text: "Daily Grid Downloads"
+          text: "Daily Package Downloads"
         },
         legend: {
           position: "bottom"
@@ -331,15 +337,15 @@
           }
         },
         series: [{
-          name: "Angular",
-          data: adat,
+          name: packageName[0],
+          data: data0,
 
         }, {
-          name: "Vue",
-          data: vdat
+          name: packageName[1],
+          data: data1
         }, {
-          name: "React",
-          data: rdat
+          name: packageName[2],
+          data: data2
         }],
         valueAxis: {
           labels: {
@@ -348,7 +354,7 @@
           visible: showscale,
         },
         categoryAxis: {
-          categories: dates,
+          categories: dailyDates,
           visible: false
         },
         tooltip: {
@@ -364,19 +370,20 @@
       if ($("#nbtn").text() == "Normalize") {
         $("#nbtn").text("Restore");
         showscale = false;
-        drawChart1(showscale, adatn, vdatn, rdatn);
+        drawChart1(showscale, packageDataNormalized0, packageDataNormalized1, packageDataNormalized2);
       } else {
         $("#nbtn").text("Normalize");
         showscale = true;
-        drawChart1(showscale, adat, vdat, rdat);
+        drawChart1(showscale, packageData[0], packageData[1], packageData[2]);
       }
     }
 
     function drawTotals() {
 
       $("#chart2").kendoChart({
+        theme: "bootstrap",
         title: {
-          text: "Weekly Grid Total Downloads (Sa-Fr)"
+          text: "Weekly Total Downloads (Sa-Fr)"
         },
         legend: {
           position: "bottom"
@@ -388,7 +395,7 @@
           }
         },
         series: [{
-          data: tdat
+          data: packageDataWeeklyTotals
         }],
         valueAxis: {
           labels: {
@@ -397,7 +404,7 @@
           visible: showscale,
         },
         categoryAxis: {
-          categories: wdates,
+          categories: weeklyDates,
           visible: false
         },
         tooltip: {
@@ -415,40 +422,59 @@
 
     <div class="row">
       <div class="col-lg-12">
-        <h1>NPM Downloads for Kendo UI Grids</h1>
+        <h1>NPM Package Download Statistics</h1>
       </div>
     </div>
     <div class="row">
       <div class="col-lg-4">
+        <h2>Period</h2>
         <span class="dateLabel">Start date:</span>
         <input id="datepicker1" value="1/2/2019" title="datepicker" /><br />
         <span class="dateLabel">End date:</span>
-        <input id="datepicker2" title="datepicker" /><br /><br />
-
-        <button id="getCount" onClick="getCount()" class="k-primary">Update</button><br /><br />
-        <button id="normalize" onClick="normalizeData()" class="k-primary"><span id="nbtn">Normalize</span></button>
-        <br /><br />
+        <input id="datepicker2" title="datepicker" />
       </div>
+      <div class="col-lg-6">
+        <h2>Packages</h2>
+        Package 1: <input type="text" id="package1" name="package1" value="@progress/kendo-angular-grid" size="30"><br />
+        Package 2: <input type="text" id="package2" name="package2" value="@progress/kendo-vue-grid" size="30"><br />
+        Package 3: <input type="text" id="package3" name="package3" value="@progress/kendo-react-grid" size="30">
+      </div>
+      <div class="col-lg-2 my-auto">
+        <button id="getCount" onClick="getCount()" class="k-primary">Update</button><br /><br/>
+        Search for packages on <a href="https://www.npmjs.com/" target="_blank">NPM</a>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-12">
+        <hr />
+      </div>
+    </div>
+    <div class="row">
 
-      <div class="col-lg-4">
+      <div class="col-lg-6 my-auto">
         <div id="grid"></div>
       </div>
-      <div class="col-lg-4">
+      <div class="col-lg-6">
         <div class="demo-section k-content wide">
           <div id="pie"></div>
         </div>
       </div>
     </div>
     <div class="row">
-      <div class="col-lg-12">
+      <div class="col-lg-10">
 
         <div id="chart1"></div>
       </div>
+      <div class="col-lg-2 my-auto">
+        <button id="normalize" onClick="normalizeData()" class="k-primary"><span id="nbtn">Normalize</span></button>
+      </div>
     </div>
     <div class="row">
-      <div class="col-lg-12">
+      <div class="col-lg-10">
 
         <div id="chart2"></div>
+      </div>
+      <div class="col-lg-2">
       </div>
     </div>
   </div>
